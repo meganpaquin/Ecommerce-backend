@@ -20,3 +20,9 @@ step 5:
 step 6:
     end the venv
         deactivate
+
+
+
+## how to run debug mode
+flask --app server --debug run
+    enter in terminal
