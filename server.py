@@ -2,8 +2,11 @@ from flask import Flask, request, abort
 import json, random
 from data import me
 from data import catalog
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app) # disable CORS, anyone can access this API
+
 
 # add the server commands first
 
@@ -51,7 +54,7 @@ def save_product():
     if not "price" in product:
         return abort(400, "ERROR: price is required")
 
-    if product["price"] < 1:
+    if int(product["price"]) < 1:
         return abort(400, 'ERROR: price is less than $1')
 
     # you should assign a unique _id

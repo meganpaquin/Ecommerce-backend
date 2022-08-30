@@ -17,7 +17,11 @@ step 5:
     install flask
         python -m pip install flask
 
-step 6:
+step 6: 
+    install flask cors (security)
+        python3 -m pip install flask-cors
+
+step 7:
     end the venv
         deactivate
 
@@ -26,3 +30,4 @@ step 6:
 ## how to run debug mode
 flask --app server --debug run
     enter in terminal
+
