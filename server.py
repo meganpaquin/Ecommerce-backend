@@ -1,42 +1,27 @@
 from flask import Flask, request, abort
-import json, random
-from data import me
-from data import catalog
+import json
 from flask_cors import CORS
+from config import database
+from bson import ObjectId
 
 app = Flask(__name__)
 CORS(app) # disable CORS, anyone can access this API
 
-
-# add the server commands first
-
-@app.get("/")  #decorator for the root file runs home() when root loads
-def home():
-    return "Hello from flask"
-
-@app.get("/test")
-def test():
-    return "This is another page"
-
-@app.get("/about")
-def about():
-    return "Megan Paquin"    
-
-### This part is API Products
-
-@app.get("/api/test")
-def test_api():
-    return json.dumps("OK")
-
-
-@app.get("/api/about")
-def about_api():
-    return json.dumps(me)
+# fix all the strings from the database use every time you get/push data from database
+def fix_id(obj):
+    obj["_id"] = str(obj["_id"])
+    return obj
 
 @app.get("/api/catalog")
 def get_catalog():
     # return the list of products
-    return json.dumps(catalog)
+    cursor = database.Products.find({}) # read all products on the database the {} is the filter option
+    results = []
+    for prod in cursor:
+        prod = fix_id(prod)
+        results.append(prod)
+
+    return json.dumps(results)
 
 @app.post("/api/catalog")
 def save_product():
@@ -57,100 +42,121 @@ def save_product():
     if int(product["price"]) < 1:
         return abort(400, 'ERROR: price is less than $1')
 
-    # you should assign a unique _id
-    product["_id"] = random.randint(100000,999999)
-    catalog.append(product)
+    database.Products.insert_one(product)
+    
+    #fix _id formatting error from mongo
+    product["_id"] = str(product["_id"])
 
-    return product
+    return json.dumps(product)
 
 @app.get('/api/product/<id>')
 def get_product_byid(id):
     # the two id names must match above
-    for prod in catalog:
-        if prod["_id"] == str(id):
-            return json.dumps(prod)
-    return 'No item exists'
+   prod = database.Products.find_one({"_id": ObjectId(id)})
+
+   if not prod:
+    return abort(404, "Product Not Found")
+
+   prod = fix_id(prod)
+   return json.dumps(prod)
 
 @app.get('/api/products/<category>')
 def get_by_category(category):
+    cursor = database.Products.find({ "category": category})
     results = []
-    for prod in catalog:
-        if prod["category"].lower() == category.lower():
-            results.append(prod)
+
+    if not prod:
+        return abort(404, "Category Not Found")
+
+    for prod in cursor:
+        prod = fix_id(prod)
+        results.append(prod)
 
     return json.dumps(results)
 
 @app.get("/api/count") 
 def catalog_count():
     # return the number of items in a list
-    number = len(catalog)
-    return json.dumps(number)
+    cursor = database.Products.find({})
+    count = 0
+    for prod in cursor:
+        count += 1
+
+    return json.dumps(count)
 
 @app.get("/api/catalog/total")
 def total_inventory_price():
+    cursor = database.Products.find({})
     total = 0
-    for price in catalog:
-        total += price["price"]
+    for prod in cursor:
+        total += prod["price"]
 
     return json.dumps(total)
 
 @app.get("/api/catalog/cheap")
 def cheapest():
-    holder = catalog[0]
-    for price in catalog:
-        if price["price"] < holder["price"]:
-            holder = price
+    cursor = database.Products.find({})
+    # not working yet
+    # not working yet
+    # not working yet
+    return json.dumps(cursor)
+
+
+
+@app.get("/api/coupon")
+def getCoupon():
+    cursor = database.Coupons.find({})
+    results = []
+
+    for coupon in cursor:
+        coupon = fix_id(coupon)
+        results.append(coupon)
+    return json.dumps(results)
+
+@app.post("/api/coupon")
+def saveCoupon():
+    new = request.get_json()
+
+    if not "code" in new:
+        return abort(400, "ERROR: code is required")
+    if not "discount" in new:
+        return abort(400, "ERROR: discount required")
+
+    database.Coupons.insert_one(new)
+    new = fix_id(new)
+    return json.dumps(new)
+
+
+@app.post("/api/user")
+def saveUser():
+    user = request.get_json()
+
+    if not "fname" in user:
+        return abort(400, "ERROR: first name is required")
+    if not "lname" in user:
+        return abort(400, "ERROR: last name is required")
+    if not "email" in user:
+        return abort(400, "ERROR: email is required")
+    if not "phone" in user:
+        return abort(400, "ERROR: phone is required")
+    if not "password1" in user:
+        return abort(400, "ERROR: password is required")
+    if not "password2" in user:
+        return abort(400, "ERROR: password is required")
+    # if "password1" != "password2":
+    #     return abort(400, "ERROR: passwords do not match")
+
+    database.Users.insert_one(user)
+    user = fix_id(user)
+
+    return json.dumps(user)
+
+@app.get("/api/user/<email>")
+def getUser(email):
+    user = database.Users.find_one({"email" : email})
+
+    if not user:
+        return abort(404, "User Not Found")
     
-    return json.dumps(holder)
-            
-@app.post("/api/game")
-def game():
-    data = request.get_json()
-    user = data.lower()
-    number = random.randint(1,3)
-    computer = " "
-    winner = " "
-
-    #validate input
-    if user != "scissor" and user != "paper" and user != "rock":
-        return abort(400, "ERROR: Please select rock, paper, or scissor")      
-
-    #generate computer answer
-    if number == 1:
-        computer = "Rock"
-    elif number == 2:
-        computer = "Paper"
-    else:
-        computer = "Scissor"
-    
-    #determine winner
-    if user == "rock":
-        if computer == "Paper":
-            winner = "Better Luck Next Time!"
-        elif computer == "Scissor":
-            winner = "You Won!"
-        else:
-            winner = "It's a Draw!"
-    elif user == "paper":
-        if computer == "Paper":
-            winner = "It's a Draw!"
-        elif computer == "Scissor":
-            winner = "Better Luck Next Time!"
-        else:
-            winner = "You Won!"
-    elif user == "scissor":
-        if computer == "Paper":
-            winner = "You Won!"
-        elif computer == "Scissor":
-            winner = "It's a Draw!"
-        else:
-            winner = "Better Luck Next Time!"
-   
-    #create the output
-    output = {
-        "User" : user.capitalize(),
-        "Computer": computer,
-        "Winner": winner
-    }
-
-    return json.dumps(output)
+    user = fix_id(user)
+    return json.dumps(user)
