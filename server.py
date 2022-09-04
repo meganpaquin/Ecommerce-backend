@@ -12,6 +12,10 @@ def fix_id(obj):
     obj["_id"] = str(obj["_id"])
     return obj
 
+@app.get("/")
+def welcome():
+    return "Welcome to the server"
+
 @app.get("/api/catalog")
 def get_catalog():
     # return the list of products
@@ -23,7 +27,7 @@ def get_catalog():
 
     return json.dumps(results)
 
-@app.post("/api/catalog")
+@app.post("/api/products")
 def save_product():
     product = request.get_json()
     # validation
@@ -65,7 +69,7 @@ def get_by_category(category):
     cursor = database.Products.find({ "category": category})
     results = []
 
-    if not prod:
+    if not category:
         return abort(404, "Category Not Found")
 
     for prod in cursor:
@@ -93,13 +97,17 @@ def total_inventory_price():
 
     return json.dumps(total)
 
-@app.get("/api/catalog/cheap")
-def cheapest():
+@app.get("/api/catalog/deals")
+def deals():
     cursor = database.Products.find({})
-    # not working yet
-    # not working yet
-    # not working yet
-    return json.dumps(cursor)
+    results = []
+
+    for prod in cursor:
+        if prod["price"] < 10:
+            prod = fix_id(prod)
+            results.append(prod)
+
+    return json.dumps(results)
 
 
 
@@ -143,13 +151,13 @@ def saveUser():
         return abort(400, "ERROR: password is required")
     if not "password2" in user:
         return abort(400, "ERROR: password is required")
-    # if "password1" != "password2":
-    #     return abort(400, "ERROR: passwords do not match")
+    if "password1" in user == "password2" in user:
+        return abort(400, "ERROR: password is required")
 
     database.Users.insert_one(user)
     user = fix_id(user)
-
     return json.dumps(user)
+  
 
 @app.get("/api/user/<email>")
 def getUser(email):
@@ -160,3 +168,27 @@ def getUser(email):
     
     user = fix_id(user)
     return json.dumps(user)
+
+@app.post("/api/order")
+def saveOrder():
+    new = request.get_json()
+   
+    # add verification here
+    if not "address":
+        return abort(400, "ERROR: address is required")
+    if not "city":
+        return abort(400, "ERROR: city is required")
+    if not "state":
+        return abort(400, "ERROR: state is required")
+    if not "zipcode":
+        return abort(400, "ERROR: zipcode is required")
+    if not "card-num":
+        return abort(400, "ERROR: card number is required")
+    if not "expiration":
+        return abort(400, "ERROR: expiration is required")
+    if not "ccv":
+        return abort(400, "ERROR: CCV is required")
+
+    # database.Orders.insert_many(new)
+    new = fix_id(new)
+    return json.dumps(new)
