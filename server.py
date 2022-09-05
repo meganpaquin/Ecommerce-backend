@@ -171,24 +171,22 @@ def getUser(email):
 
 @app.post("/api/order")
 def saveOrder():
-    new = request.get_json()
-   
-    # add verification here
-    if not "address":
-        return abort(400, "ERROR: address is required")
-    if not "city":
-        return abort(400, "ERROR: city is required")
-    if not "state":
-        return abort(400, "ERROR: state is required")
-    if not "zipcode":
-        return abort(400, "ERROR: zipcode is required")
-    if not "card-num":
-        return abort(400, "ERROR: card number is required")
-    if not "expiration":
-        return abort(400, "ERROR: expiration is required")
-    if not "ccv":
-        return abort(400, "ERROR: CCV is required")
+    order = request.get_json()
 
-    # database.Orders.insert_many(new)
-    new = fix_id(new)
-    return json.dumps(new)
+    database.Orders.insert_one(order)
+
+    return "Order Saved"
+
+@app.get("/api/order")
+def getOrder():
+    order = database.Orders.find({})
+    results = []
+
+    if not order:
+        return "No Orders Found"
+
+    for each in order:
+        each = fix_id(each)
+        results.append(each)
+
+    return json.dumps(results)
